@@ -123,6 +123,8 @@ module Jekyll
     def process
       self.reset
       self.read_layouts
+      self.recurse_handle_posts
+      self.coordinate_posts
       self.transform_pages
       self.transform_sass if self.sass
       self.write_posts
@@ -154,6 +156,7 @@ module Jekyll
 
       # first pass processes, but does not yet render post content
       entries.each do |f|
+        print "Creating from dir: ", dir, " the post ", f, "\n"
         if Post.valid?(f)
           post = Post.new(self, self.source, dir, f)
 
@@ -164,7 +167,9 @@ module Jekyll
           end
         end
       end
+    end
 
+    def coordinate_posts()
       self.posts.sort!
 
       # second pass renders each post now that full site payload is available
@@ -188,6 +193,24 @@ module Jekyll
       end
     end
 
+    def recurse_handle_posts(dir = '')
+      base = File.join(self.source, dir)
+      entries = filter_entries(Dir.entries(base))
+      directories = entries.select { |e| File.directory?(File.join(base, e)) }
+
+      # we need to make sure to process _posts *first* otherwise they
+      # might not be available yet to other templates as {{ site.posts }}
+      if directories.include?('_posts')
+        FileUtils.mkdir_p(File.join(self.dest, dir))
+        read_posts(dir)
+      end
+      directories.each do |newDir|
+        if File.directory?(File.join(base, newDir))
+          next if self.dest.sub(/\/$/, '') == File.join(base, newDir)
+          recurse_handle_posts(File.join(dir, newDir))
+        end
+      end
+    end
     # Copy all regular files from <source> to <dest>/ ignoring
     # any files/directories that are hidden or backup files (start
     # with "." or "#" or end with "~") or contain site content (start with "_")
@@ -203,11 +226,10 @@ module Jekyll
       directories = entries.select { |e| File.directory?(File.join(base, e)) }
       files = entries.reject { |e| File.directory?(File.join(base, e)) }
 
-      # we need to make sure to process _posts *first* otherwise they
-      # might not be available yet to other templates as {{ site.posts }}
+      # we need to remove _posts here, they were previously processed by
+      # recurse_handle_posts
       if directories.include?('_posts')
         directories.delete('_posts')
-        read_posts(dir)
       end
       [directories, files].each do |entries|
         entries.each do |f|

@@ -137,7 +137,7 @@ module Jekyll
         "month"      => date.strftime("%m"),
         "day"        => date.strftime("%d"),
         "title"      => slug,
-        "categories" => categories.sort.join('/')
+        "categories" => categories.join('/')
       }.inject(template) { |result, token|
         result.gsub(/:#{token.first}/, token.last)
       }.gsub("//", "/")
