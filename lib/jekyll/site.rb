@@ -156,7 +156,6 @@ module Jekyll
 
       # first pass processes, but does not yet render post content
       entries.each do |f|
-        print "Creating from dir: ", dir, " the post ", f, "\n"
         if Post.valid?(f)
           post = Post.new(self, self.source, dir, f)
 
